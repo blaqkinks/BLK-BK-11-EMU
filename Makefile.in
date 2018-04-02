@@ -1,0 +1,145 @@
+#
+# This file is part of 'pdp', a PDP-11 simulator.
+#
+# For information contact:
+#
+#   Computer Science House
+#   Attn: Eric Edwards
+#   Box 861
+#   25 Andrews Memorial Drive
+#   Rochester, NY 14623
+#
+# Email:  mag@potter.csh.rit.edu
+# FTP:    ftp.csh.rit.edu:/pub/csh/mag/pdp.tar.Z
+#
+# Copyright 1994, Eric A. Edwards
+#
+# Permission to use, copy, modify, and distribute this
+# software and its documentation for any purpose and without
+# fee is hereby granted, provided that the above copyright
+# notice appear in all copies.  Eric A. Edwards makes no
+# representations about the suitability of this software
+# for any purpose.  It is provided "as is" without expressed
+# or implied warranty.
+#
+# Makefile
+#
+#### Start of system configuration section. ####
+
+srcdir		= @srcdir@
+prefix		= @prefix@
+exec_prefix	= @exec_prefix@
+datarootdir	= @datarootdir@
+bindir		= @bindir@
+libdir		= @libdir@
+mandir		= @mandir@
+
+INSTALL		= @INSTALL@
+INSTALL_PROGRAM	= @INSTALL_PROGRAM@
+INSTALL_DATA	= @INSTALL_DATA@
+LDFLAGS		= @LDFLAGS@
+LIBS		= @LIBS@
+CC		= @CC@
+CFLAGS		= @CFLAGS@ @DEFS@
+
+#### End of system configuration section. ####
+
+CFLAGS		+= -DSHIFTS_ALLOWED -DEIS_ALLOWED
+
+#
+# Targets
+#
+
+TARGET		= bk
+UTILS		= maketape readtape
+
+#
+# Source and Object Files
+#
+
+SRCS		= access.c boot.c conf.c covox.c cpu.c event.c \
+		  main.c ui.c scr.c timer.c tape.c disk.c mouse.c printer.c \
+		  tty.c io.c disas.c sdl_input.c sdl_sound.c serial.c bkplip.c \
+		  terakdisk.c synth.c emu2149.c mmap_emu.c sim_tape.c sim_disk.c
+OBJS		= access.o boot.o conf.o covox.o cpu.o event.o icon.o \
+		  main.o ui.o scr.o timer.o tape.o disk.o mouse.o printer.o \
+		  sdl_input.o sdl_sound.o tty.o io.o disas.o serial.o bkplip.o \
+		  terakdisk.o synth.o emu2149.o mmap_emu.o sim_tape.o sim_disk.o
+INCS		= defines.h scr.h conf.h emu2149.h emutypes.h
+USRCS		= readtape.c maketape.c pngtorgba.c
+TEXTS		= README.html configure.ac icon.c
+
+#
+# Build Rules
+#
+
+all everything:	$(TARGET) $(UTILS)
+		touch everything
+
+install:	all
+		$(INSTALL_PROGRAM) $(TARGET) $(bindir)
+		cd Rom; for f in *.ROM; do\
+			$(INSTALL_DATA) $$f $(datarootdir)/bk/$$f; done
+
+uninstall:
+
+clean:
+		rm -f *~ *.o *.log $(TARGET) pngtorgba $(UTILS) everything
+		rm -rf autoconf.sum config.cache autom4te.cache
+
+distclean::	clean
+		rm -f Makefile config.status
+
+check:
+
+configure:      configure.ac
+		autoconf
+
+Makefile:       Makefile.in config.status
+		./config.status
+
+config.status:  configure
+		./config.status --recheck
+
+.c.o:
+		$(CC) -c $(CFLAGS) $<
+
+icon.c:		bk.png
+		$(MAKE) pngtorgba
+		./pngtorgba bk.png > icon.c
+
+$(TARGET):	$(OBJS)
+		$(CC) $(LDFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+
+readtape:	readtape.c
+		$(CC) $(LDFLAGS) $(CFLAGS) -o readtape readtape.c $(LIBS)
+
+maketape:	maketape.c
+		$(CC) $(LDFLAGS) $(CFLAGS) -o maketape maketape.c $(LIBS)
+
+#
+# Cool Utilities
+#
+
+count:
+		wc -l $(SRCS) $(USRCS)
+
+dist:
+		tar czvf BLK-BK-11-EMU.`date +%Y.%m.%d`.tar.gz \
+		--exclude CVS $(SRCS) $(INCS) $(USRCS) po Rom $(TEXTS) Makefile bk.png
+
+#depend:
+#		makedepend -Dlinux=1 -Y $(SRCS) $(USRCS) $(INCS)
+
+depend:
+		@cp Makefile Makefile~~
+		(sed '/^### DO NOT DELETE THIS LINE/,$$d' Makefile;\
+		echo '### DO NOT DELETE THIS LINE';\
+		$(CC) -MM $(CFLAGS) *.c |\
+		sed ':1;/\.o: .* \\/{;N;s/ *\\\n */ /;};s/ \/[^ ]*h */ /;t1';\
+		echo '# DEPENDENCIES MUST END AT END OF FILE';\
+		echo '# IF YOU PUT STUFF HERE IT WILL GO AWAY';\
+		echo '# see make depend above') > Makefile~ &&\
+		mv Makefile~ Makefile
+
+### DO NOT DELETE THIS LINE
